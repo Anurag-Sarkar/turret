@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: Arial;
+    text-align: center;
+    background: #111;
+    color: white;
+  }
+
+  button {
+    padding: 15px 20px;
+    margin: 5px;
+    font-size: 18px;
+    border: none;
+    border-radius: 10px;
+  }
+
+  .fire {
+    background: red;
+    color: white;
+    font-size: 22px;
+  }
+
+  .speed button {
+    background: #333;
+    color: white;
+  }
+
+  .grid {
+    display: inline-grid;
+    grid-template-columns: 80px 80px 80px;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .arrow {
+    background: #444;
+    color: white;
+    font-size: 20px;
+  }
+
+</style>
+</head>
+
+<body>
+
+<h2>🎯 Turret Control</h2>
+
+<button onclick="connect()">🔗 Connect</button>
+
+<h3>⚡ Flywheel</h3>
+<div class="speed">
+  <button onclick="send('0')">OFF</button>
+  <button onclick="send('1')">LOW</button>
+  <button onclick="send('2')">MED</button>
+  <button onclick="send('3')">HIGH</button>
+</div>
+
+<h3>🔥 Fire</h3>
+<button class="fire" onclick="send('F')">FIRE</button>
+
+<h3>🎮 Control</h3>
+
+<div class="grid">
+  <div></div>
+  <button class="arrow" id="up">⬆️</button>
+  <div></div>
+
+  <button class="arrow" id="left">⬅️</button>
+  <div></div>
+  <button class="arrow" id="right">➡️</button>
+
+  <div></div>
+  <button class="arrow" id="down">⬇️</button>
+  <div></div>
+</div>
+
+<script>
+let device, characteristic;
+let interval;
+
+async function connect() {
+  device = await navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']
+  });
+
+  const server = await device.gatt.connect();
+  const service = await server.getPrimaryService(
+    '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
+  );
+
+  characteristic = await service.getCharacteristic(
+    '6e400002-b5a3-f393-e0a9-e50e24dcca9e'
+  );
+
+  alert("Connected!");
+}
+
+async function send(val) {
+  if (!characteristic) return;
+  await characteristic.writeValue(new TextEncoder().encode(val));
+}
+
+// HOLD logic
+function hold(cmd) {
+  interval = setInterval(() => send(cmd), 80);
+}
+
+function stop() {
+  clearInterval(interval);
+}
+
+// PAN
+document.getElementById("left").onmousedown = () => hold("P:3");
+document.getElementById("left").onmouseup = stop;
+
+document.getElementById("right").onmousedown = () => hold("P:-3");
+document.getElementById("right").onmouseup = stop;
+
+// TILT
+document.getElementById("up").onmousedown = () => hold("T:3");
+document.getElementById("up").onmouseup = stop;
+
+document.getElementById("down").onmousedown = () => hold("T:-3");
+document.getElementById("down").onmouseup = stop;
+
+// MOBILE SUPPORT
+["left","right","up","down"].forEach(id => {
+  let btn = document.getElementById(id);
+
+  btn.ontouchstart = (e) => {
+    e.preventDefault();
+    if (id === "left") hold("P:-3");
+    if (id === "right") hold("P:3");
+    if (id === "up") hold("T:3");
+    if (id === "down") hold("T:-3");
+  };
+
+  btn.ontouchend = stop;
+});
+</script>
+
+</body>
+</html>
